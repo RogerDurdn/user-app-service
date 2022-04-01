@@ -1,7 +1,14 @@
 package main
 
-import "log"
+import (
+	"github.com/RogerDurdn/users/domain"
+	"github.com/RogerDurdn/users/pkg"
+	"github.com/RogerDurdn/users/rest"
+)
 
 func main() {
-	log.Println("hello world")
+	storage := &pkg.PostgresStorage{}
+	service := domain.NewNormalSrv(storage)
+	server := rest.NewRest(service, "9191")
+	server.Start()
 }
