@@ -1,28 +1,54 @@
 package pkg
 
-import "github.com/RogerDurdn/users/model"
+import (
+	"github.com/RogerDurdn/users/model"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
+	"log"
+)
 
 type Storage interface {
-	findUserById(id int) (*model.User, error)
-	findUserByName(name string) (*model.User, error)
-	createOrUpdateUser(user *model.User) (*model.User, error)
-	deleteUserById(id int) bool
+	FindUserById(id int) (*model.User, error)
+	FindUserByUserName(userName string) (*model.User, error)
+	CreateOrUpdateUser(user *model.User) (*model.User, error)
+	DeleteUserById(id int) error
 }
 
-type PostgresStorage struct {
+type postgresStorage struct {
+	db *gorm.DB
 }
 
-func (p *PostgresStorage) findUserById(id int) (*model.User, error) {
-	return nil, nil
+var config = &gorm.Config{
+	NamingStrategy: schema.NamingStrategy{
+		TablePrefix:   "data.",
+		SingularTable: false,
+	},
 }
-func (p *PostgresStorage) findUserByName(name string) (*model.User, error) {
 
-	return nil, nil
+func NewPostgresStorage() *postgresStorage {
+	dsn := "host=localhost user=postgres password=admin dbname=postgres port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+	db, err := gorm.Open(postgres.Open(dsn), config)
+	if err != nil {
+		log.Panicln(err)
+	}
+	return &postgresStorage{db: db}
 }
-func (p *PostgresStorage) createOrUpdateUser(user *model.User) (*model.User, error) {
 
-	return nil, nil
+func (p *postgresStorage) FindUserById(id int) (*model.User, error) {
+	var user model.User
+	return &user, p.db.First(&user, id).Error
 }
-func (p *PostgresStorage) deleteUserById(id int) bool {
-	return false
+
+func (p *postgresStorage) FindUserByUserName(userName string) (*model.User, error) {
+	var user model.User
+	return &user, p.db.Where("user_name = ?", userName).First(&user).Error
+}
+
+func (p *postgresStorage) CreateOrUpdateUser(user *model.User) (*model.User, error) {
+	return user, p.db.Create(user).Error
+}
+
+func (p *postgresStorage) DeleteUserById(id int) error {
+	return p.db.Delete(model.User{}, id).Error
 }

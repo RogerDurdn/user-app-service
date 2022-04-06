@@ -2,6 +2,7 @@ package rest
 
 import (
 	"github.com/RogerDurdn/users/domain"
+	"github.com/RogerDurdn/users/errors"
 	"github.com/RogerDurdn/users/model"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -21,7 +22,7 @@ func (rs *Rest) Start() {
 	r := gin.Default()
 	rg := r.Group("/api")
 	rg.GET("/user/:id", rs.getUserById)
-	rg.GET("/user", rs.getUserByName)
+	rg.GET("/user", rs.getUserByQuery)
 	rg.POST("/user", rs.createUser)
 	rg.PUT("/user", rs.updateUser)
 	rg.DELETE("/user/:id", rs.deleteUserById)
@@ -29,13 +30,13 @@ func (rs *Rest) Start() {
 	log.Panic(r.Run(rs.address))
 }
 
-func (rs *Rest) getUserByName(c *gin.Context) {
-	name := c.Query("name")
-	if shouldAbort(c, name == "") {
+func (rs *Rest) getUserByQuery(c *gin.Context) {
+	userName, ok := c.GetQuery("userName")
+	if shouldAbort(c, !ok) {
 		return
 	}
-	user, err := rs.service.FindUserByName(name)
-	responseOkOrErrorIfPresent(c, user, err)
+	user, err := rs.service.FindUserByUserName(userName)
+	response(c, user, err)
 }
 
 func (rs *Rest) getUserById(c *gin.Context) {
@@ -44,7 +45,7 @@ func (rs *Rest) getUserById(c *gin.Context) {
 		return
 	} else {
 		user, err := rs.service.FindUserById(idInt)
-		responseOkOrErrorIfPresent(c, user, err)
+		response(c, user, err)
 	}
 }
 
@@ -54,8 +55,8 @@ func (rs *Rest) authUser(c *gin.Context) {
 	if shouldAbort(c, userName == "", pwd == "") {
 		return
 	}
-	ok, err := rs.service.AuthUser(userName, pwd)
-	responseOkOrErrorIfPresent(c, ok, err)
+	err := rs.service.AuthUser(userName, pwd)
+	response(c, "", err)
 }
 
 func (rs *Rest) deleteUserById(c *gin.Context) {
@@ -63,8 +64,8 @@ func (rs *Rest) deleteUserById(c *gin.Context) {
 	if idInt, abort := shouldAbortInt(c, id); abort {
 		return
 	} else {
-		ok, err := rs.service.DeleteUserById(idInt)
-		responseOkOrErrorIfPresent(c, ok, err)
+		err := rs.service.DeleteUserById(idInt)
+		response(c, "", err)
 	}
 }
 
@@ -74,7 +75,7 @@ func (rs *Rest) updateUser(c *gin.Context) {
 		return
 	}
 	user, err := rs.service.CreateOrUpdateUser(user)
-	responseOkOrErrorIfPresent(c, user, err)
+	response(c, user, err)
 }
 
 func (rs *Rest) createUser(c *gin.Context) {
@@ -83,7 +84,7 @@ func (rs *Rest) createUser(c *gin.Context) {
 		return
 	}
 	user, err := rs.service.CreateOrUpdateUser(user)
-	responseOkOrErrorIfPresent(c, user, err)
+	response(c, user, err)
 }
 
 func shouldAbortBind(c *gin.Context, user *model.User) bool {
@@ -110,13 +111,14 @@ func shouldAbort(c *gin.Context, validations ...bool) bool {
 }
 
 type Backs interface {
-	*model.User | bool
+	*model.User | bool | string
 }
 
-func responseOkOrErrorIfPresent[B Backs](c *gin.Context, back B, err *model.ErrorWrap) {
-	if err != nil {
-		c.JSON(err.Code, gin.H{"msg": err.ErrorMsg()})
-	} else {
+func response[B Backs](c *gin.Context, back B, err error) {
+	switch e := err.(type) {
+	case *errors.BusinessError:
+		c.JSON(e.Code, e.Msg)
+	case nil:
 		c.JSON(200, gin.H{"data": back})
 	}
 }

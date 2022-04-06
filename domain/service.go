@@ -1,16 +1,17 @@
 package domain
 
 import (
+	"github.com/RogerDurdn/users/errors"
 	"github.com/RogerDurdn/users/model"
 	"github.com/RogerDurdn/users/pkg"
 )
 
 type Service interface {
-	FindUserById(id int) (*model.User, *model.ErrorWrap)
-	FindUserByName(name string) (*model.User, *model.ErrorWrap)
-	DeleteUserById(id int) (bool, *model.ErrorWrap)
-	AuthUser(userName, pwd string) (bool, *model.ErrorWrap)
-	CreateOrUpdateUser(user *model.User) (*model.User, *model.ErrorWrap)
+	FindUserById(id int) (*model.User, error)
+	FindUserByUserName(userName string) (*model.User, error)
+	CreateOrUpdateUser(user *model.User) (*model.User, error)
+	DeleteUserById(id int) error
+	AuthUser(userName, pwd string) error
 }
 
 type NormalSrv struct {
@@ -21,22 +22,42 @@ func NewNormalSrv(storage pkg.Storage) *NormalSrv {
 	return &NormalSrv{storage: storage}
 }
 
-func (ns *NormalSrv) FindUserById(id int) (*model.User, *model.ErrorWrap) {
-	return &model.User{Id: 123, Name: "roger", Password: "secure"}, nil
+func (ns *NormalSrv) FindUserById(id int) (*model.User, error) {
+	user, err := ns.storage.FindUserById(id)
+	if err != nil {
+		return user, errors.NotFoundError("Not found user with id:" + err.Error())
+	}
+	return user, err
 }
 
-func (ns *NormalSrv) FindUserByName(name string) (*model.User, *model.ErrorWrap) {
-	return nil, nil
+func (ns *NormalSrv) FindUserByUserName(userName string) (*model.User, error) {
+	user, err := ns.storage.FindUserByUserName(userName)
+	if err != nil {
+		return user, errors.NotFoundError("Not found user with name:" + err.Error())
+	}
+	return user, err
 }
 
-func (ns *NormalSrv) DeleteUserById(id int) (bool, *model.ErrorWrap) {
-	return false, nil
+func (ns *NormalSrv) CreateOrUpdateUser(user *model.User) (*model.User, error) {
+	user, err := ns.storage.CreateOrUpdateUser(user)
+	if err != nil {
+		return user, errors.InternalServerError("Cannot create user:" + err.Error())
+	}
+	return user, nil
 }
 
-func (ns *NormalSrv) AuthUser(userName, pwd string) (bool, *model.ErrorWrap) {
-	return false, nil
+func (ns *NormalSrv) DeleteUserById(id int) error {
+	if err := ns.storage.DeleteUserById(id); err == nil {
+		return err
+	}
+	return errors.InternalServerError("Cannot delete user")
 }
 
-func (ns *NormalSrv) CreateOrUpdateUser(user *model.User) (*model.User, *model.ErrorWrap) {
-	return nil, nil
+func (ns *NormalSrv) AuthUser(userName, pwd string) error {
+	if user, err := ns.FindUserByUserName(userName); err == nil {
+		if user.Password == pwd {
+			return err
+		}
+	}
+	return errors.Unauthorized("nop")
 }
