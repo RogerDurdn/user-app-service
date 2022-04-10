@@ -11,7 +11,7 @@ type Service interface {
 	FindUserByUserName(userName string) (*model.User, error)
 	CreateOrUpdateUser(user *model.User) (*model.User, error)
 	DeleteUserById(id int) error
-	AuthUser(userName, pwd string) error
+	AuthUser(userName, pwd string) (*model.User, error)
 }
 
 type NormalSrv struct {
@@ -53,11 +53,11 @@ func (ns *NormalSrv) DeleteUserById(id int) error {
 	return errors.InternalServerError("Cannot delete user")
 }
 
-func (ns *NormalSrv) AuthUser(userName, pwd string) error {
+func (ns *NormalSrv) AuthUser(userName, pwd string) (*model.User, error) {
 	if user, err := ns.FindUserByUserName(userName); err == nil {
 		if user.Password == pwd {
-			return err
+			return user, nil
 		}
 	}
-	return errors.Unauthorized("nop")
+	return nil, errors.Unauthorized("nop")
 }

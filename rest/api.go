@@ -50,13 +50,12 @@ func (rs *Rest) getUserById(c *gin.Context) {
 }
 
 func (rs *Rest) authUser(c *gin.Context) {
-	userName := c.GetHeader("userName")
-	pwd := c.GetHeader("pwd")
-	if shouldAbort(c, userName == "", pwd == "") {
+	user := &model.User{}
+	if shouldAbortBind(c, user) {
 		return
 	}
-	err := rs.service.AuthUser(userName, pwd)
-	response(c, "", err)
+	user, err := rs.service.AuthUser(user.UserName, user.Password)
+	response(c, user, err)
 }
 
 func (rs *Rest) deleteUserById(c *gin.Context) {
@@ -119,6 +118,6 @@ func response[B Backs](c *gin.Context, back B, err error) {
 	case *errors.BusinessError:
 		c.JSON(e.Code, e.Msg)
 	case nil:
-		c.JSON(200, gin.H{"data": back})
+		c.JSON(200, back)
 	}
 }

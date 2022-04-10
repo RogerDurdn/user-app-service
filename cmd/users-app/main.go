@@ -9,6 +9,6 @@ import (
 func main() {
 	storage := pkg.NewPostgresStorage()
 	service := domain.NewNormalSrv(storage)
-	server := rest.NewRest(service, "9191")
+	server := rest.NewRest(service, "9092")
 	server.Start()
 }
